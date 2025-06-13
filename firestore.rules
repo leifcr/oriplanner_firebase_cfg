@@ -1,0 +1,86 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // User Profiles
+    // Rules remain the same as user profiles are not directly affected by this change.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow update: if request.auth != null && request.auth.uid == userId && request.resource.data.createdAt == resource.data.createdAt;
+      allow create: if false; // Creation handled by Cloud Function
+      allow delete: if false;
+    }
+
+    // Calendars
+    // The main calendar document rules.
+    // The 'read' rule is updated to avoid get() by checking permissions directly on the calendar document.
+    // 'uid' field on calendar is assumed to be the owner's UID.
+    match /calendars/{calendarId} {
+      allow read: if request.auth != null && (request.auth.uid == resource.data.uid || request.auth.uid in resource.data.permissions);
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid && request.resource.data.permissions[request.auth.uid] == 'owner';
+      allow update: if request.auth != null && request.auth.uid == resource.data.uid && resource.data.permissions[request.auth.uid] == 'owner';
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid && resource.data.isPersonal != true;
+    }
+
+    // Events - Using Denormalized Permissions
+    match /calendars/{calendarId}/events/{eventId} {
+      let eventData = resource.data; // Existing event data for read, update, delete
+      let incomingEventData = request.resource.data; // Incoming event data for create, update
+
+      // Helper function to get a user's role from a permissions map
+      function getUserRole(permissionsMap, userId) {
+        if (permissionsMap != null && userId in permissionsMap) {
+          return permissionsMap[userId];
+        }
+        return null;
+      }
+
+      // Read Access:
+      // 1. User has a role in eventSpecificPermissions.
+      // 2. OR User has a role in calendarPermissionsSnapshot AND (event is not private OR user is the calendar owner).
+      // 3. OR Event is public via eventSpecificPermissions (e.g., eventSpecificPermissions.public == 'viewer').
+      allow read: if request.auth != null && (
+                    (getUserRole(eventData.eventSpecificPermissions, request.auth.uid) != null) ||
+                    (getUserRole(eventData.eventSpecificPermissions, "public") == "viewer") || // Public access
+                    (
+                      getUserRole(eventData.calendarPermissionsSnapshot, request.auth.uid) != null &&
+                      (eventData.isPrivate == false || eventData.calendarOwnerIdSnapshot == request.auth.uid)
+                    )
+                  );
+
+      // Create Access:
+      // User must have 'owner' or 'editor' role in the *incoming* calendarPermissionsSnapshot.
+      // IMPORTANT: The `incomingEventData.calendarPermissionsSnapshot` and `incomingEventData.calendarOwnerIdSnapshot`
+      // MUST be populated correctly and securely, ideally by a Cloud Function triggered by event creation,
+      // or a callable Cloud Function that creates the event.
+      // If clients set this directly, they could grant themselves unauthorized permissions for the new event.
+      // This rule assumes the snapshot is trustworthy for the context of the creating user.
+      allow create: if request.auth != null &&
+                       (getUserRole(incomingEventData.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
+                        getUserRole(incomingEventData.calendarPermissionsSnapshot, request.auth.uid) == 'editor');
+                       // Add additional checks: e.g., ensure incomingEventData.calendarOwnerIdSnapshot is present.
+                       // Ensure `request.auth.uid == incomingEventData.creatorId` if you add a creatorId field.
+
+      // Update Access:
+      // User has 'owner' or 'editor' role in existing calendarPermissionsSnapshot.
+      // OR User has 'editor' (or equivalent) role in existing eventSpecificPermissions.
+      allow update: if request.auth != null && (
+                      (getUserRole(eventData.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
+                       getUserRole(eventData.calendarPermissionsSnapshot, request.auth.uid) == 'editor') ||
+                      (getUserRole(eventData.eventSpecificPermissions, request.auth.uid) == 'editor') // Assuming 'editor' role for event-specific updates
+                    );
+                    // Consider if calendarOwnerIdSnapshot or calendarPermissionsSnapshot should be immutable after creation
+                    // e.g. && incomingEventData.calendarOwnerIdSnapshot == eventData.calendarOwnerIdSnapshot
+
+      // Delete Access:
+      // User has 'owner' or 'editor' role in existing calendarPermissionsSnapshot.
+      // OR User has 'owner' (or equivalent) role in existing eventSpecificPermissions.
+      allow delete: if request.auth != null && (
+                      (getUserRole(eventData.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
+                       getUserRole(eventData.calendarPermissionsSnapshot, request.auth.uid) == 'editor') ||
+                      (getUserRole(eventData.eventSpecificPermissions, request.auth.uid) == 'owner') // Assuming 'owner' role for event-specific deletion
+                    );
+    }
+  }
+}

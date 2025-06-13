@@ -1,19 +1,31 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * import {onCall} from "firebase-functions/v2/https";
- * import {onDocumentWritten} from "firebase-functions/v2/firestore";
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+import * as admin from "firebase-admin";
 
-import {onRequest} from "firebase-functions/v2/https";
-import * as logger from "firebase-functions/logger";
+// Initialize Firebase Admin SDK ONCE at the entry point of your functions.
+// This ensures it's initialized before any function tries to use it.
+if (admin.apps.length === 0) {
+  admin.initializeApp();
+}
 
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
+// Import functions from their respective TypeScript files.
+// Make sure the paths are correct relative to this index.ts file.
+// And ensure that the imported files use `export const functionName = ...`
+import {onCreateUser} from "./onCreateUser"; // Assuming this file exports 'onCreateUser'
+import {denormalizeCalendarPermissionsToEvent} from "./denormalizeCalendarPermissionsToEvent"; // Assuming this file exports 'denormalizeCalendarPermissionsToEvent'
 
-// export const helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+// Export the functions for Firebase to discover.
+// The names used here (e.g., onCreateUser) are what Firebase will use
+// to identify and trigger the functions.
+export {
+  onCreateUser,
+  denormalizeCalendarPermissionsToEvent,
+};
+
+// If you add more functions, you would import their named exports
+// and add them to the export block above.
+// For example:
+// import { anotherFunction } from "./anotherFunctionFile";
+// export {
+//   onCreateUser,
+//   denormalizeCalendarPermissionsToEvent,
+//   anotherFunction,
+// };

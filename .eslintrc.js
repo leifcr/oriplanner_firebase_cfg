@@ -30,6 +30,5 @@ module.exports = {
     "import/no-unresolved": 0,
     "indent": ["error", 2],
     "max-len": ["error", { "code": 120, "ignoreUrls": true, "ignoreStrings": true, "ignoreTemplateLiterals": true, "ignoreRegExpLiterals": true }],
-
   },
 };

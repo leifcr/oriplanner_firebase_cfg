@@ -1,31 +1,30 @@
-import * as admin from "firebase-admin";
+// This file simply exports the functions.
+// Firebase Admin SDK initialization is handled in adminUtil.ts when it's first imported.
 
-// Initialize Firebase Admin SDK ONCE at the entry point of your functions.
-// This ensures it's initialized before any function tries to use it.
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
+// import * as functions from "firebase-functions/v1";
+// We import adminUtil to ensure admin is initialized if any function needs it.
+// Even if this simpleHttp function doesn't use db directly,
+// it's good practice if other functions in the project will.
+// import "./adminUtil"; // This ensures adminUtil.ts runs and initializes admin
 
-// Import functions from their respective TypeScript files.
-// Make sure the paths are correct relative to this index.ts file.
-// And ensure that the imported files use `export const functionName = ...`
-import {onCreateUser} from "./onCreateUser"; // Assuming this file exports 'onCreateUser'
-import {denormalizeCalendarPermissionsToEvent} from "./denormalizeCalendarPermissionsToEvent"; // Assuming this file exports 'denormalizeCalendarPermissionsToEvent'
+import {onCreateUser} from "./onCreateUser";
+// import { denormalizeCalendarPermissionsToEvent } from "./denormalizeCalendarPermissionsToEvent";
 
-// Export the functions for Firebase to discover.
-// The names used here (e.g., onCreateUser) are what Firebase will use
-// to identify and trigger the functions.
 export {
   onCreateUser,
-  denormalizeCalendarPermissionsToEvent,
+  // denormalizeCalendarPermissionsToEvent,
 };
 
-// If you add more functions, you would import their named exports
-// and add them to the export block above.
-// For example:
-// import { anotherFunction } from "./anotherFunctionFile";
-// export {
-//   onCreateUser,
-//   denormalizeCalendarPermissionsToEvent,
-//   anotherFunction,
-// };
+/**
+ * A very simple HTTP function to test basic deployment and execution.
+ */
+// export const simpleHttp = functions.https.onRequest((request, response) => {
+// functions.logger.info("simpleHttp function was triggered!");
+// response.send("Hello from a simple Firebase Function!");
+// });
+
+// For this test, we are NOT exporting onCreateUser or other functions
+// to isolate potential issues.
+//
+// import { onCreateUser } from "./onCreateUser";
+// export { onCreateUser };

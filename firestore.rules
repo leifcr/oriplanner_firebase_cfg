@@ -4,10 +4,11 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // User Profiles
-    match /users/{userId} {
+    match /user_profiles/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow update: if request.auth != null && request.auth.uid == userId && 
-                       request.resource.data.createdAt == resource.data.createdAt;
+                       request.resource.data.createdAt == resource.data.createdAt &&
+                       request.resource.data.uid == resource.data.uid; // Also protect uid from changes
       allow create: if false; // Creation handled by Cloud Function
       allow delete: if false;
     }
@@ -29,7 +30,7 @@ service cloud.firestore {
     }
 
     // Events - Using Denormalized Permissions
-    match /calendars/{calendarId}/events/{eventId} { // Ensure this line is clean
+    match /calendars/{calendarId}/events/{eventId} {
       function getUserRole(permissionsMap, userId) {
         return permissionsMap != null && userId in permissionsMap ? permissionsMap[userId] : null;
       }

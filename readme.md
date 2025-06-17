@@ -43,3 +43,12 @@ Only functions to Firebase:
 
 Only rules
 `firebase deploy --only firestore:rules`
+
+# Running the emulators
+
+To ensure data is persisted in the emulators:
+```firebase emulators:start --import .\fbexport\ --export-on-exit .\fbexport\```
+
+
+To always have clean data:
+```firebase emulators:start```

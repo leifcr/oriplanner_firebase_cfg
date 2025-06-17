@@ -67,3 +67,8 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# Ignore firebase emulator exported data
+# All data under folder fbexport should be ignored
+fbexport/**
+

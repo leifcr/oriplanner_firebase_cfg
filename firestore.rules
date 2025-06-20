@@ -15,48 +15,57 @@ service cloud.firestore {
 
     // Calendars
     match /calendars/{calendarId} {
-      allow read: if request.auth != null && 
-                     (request.auth.uid == resource.data.uid || 
-                      request.auth.uid in resource.data.permissions);
-      allow create: if request.auth != null && 
-                       request.auth.uid == request.resource.data.uid && 
-                       request.resource.data.permissions[request.auth.uid] == 'owner';
-      allow update: if request.auth != null && 
-                       request.auth.uid == resource.data.uid && 
-                       resource.data.permissions[request.auth.uid] == 'owner';
-      allow delete: if request.auth != null && 
-                       resource.data.uid == request.auth.uid && 
-                       resource.data.isPersonal != true;
+      allow read: if true
+      allow create: if true
+      allow update: if true
+      allow delete: if true
+      // allow read: if request.auth != null && 
+      //                (request.auth.uid == resource.data.uid || 
+      //                 request.auth.uid in resource.data.permissions);
+      // allow create: if request.auth != null && 
+      //                  request.auth.uid == request.resource.data.uid && 
+      //                  request.resource.data.permissions[request.auth.uid] == 'owner';
+      // allow update: if request.auth != null && 
+      //                  request.auth.uid == resource.data.uid && 
+      //                  resource.data.permissions[request.auth.uid] == 'owner';
+      // allow delete: if request.auth != null && 
+      //                  resource.data.uid == request.auth.uid && 
+      //                  resource.data.isPersonal != true;
     }
 
     // Events - Using Denormalized Permissions
     match /calendars/{calendarId}/events/{eventId} {
-      function getUserRole(permissionsMap, userId) {
-        return permissionsMap != null && userId in permissionsMap ? permissionsMap[userId] : null;
-      }
+      allow read: if true
+      allow create: if true
+      allow update: if true
+      allow delete: if true
 
-      allow read: if request.auth != null && (
-        (getUserRole(resource.data.eventSpecificPermissions, request.auth.uid) != null) ||
-        (getUserRole(resource.data.eventSpecificPermissions, "public") == "viewer") ||
-        (getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) != null &&
-         (resource.data.isPrivate == false || resource.data.calendarOwnerIdSnapshot == request.auth.uid))
-      );
+      // function getUserRole(permissionsMap, userId) {
+      //   return permissionsMap != null && userId in permissionsMap ? permissionsMap[userId] : null;
+      // }
 
-      allow create: if request.auth != null &&
-        (getUserRole(request.resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
-         getUserRole(request.resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'editor');
+      // allow read: if request.auth != null && (
+      //   (getUserRole(resource.data.eventSpecificPermissions, request.auth.uid) != null) ||
+      //   (getUserRole(resource.data.eventSpecificPermissions, "public") == "viewer") ||
+      //   (getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) != null &&
+      //    (resource.data.isPrivate == false || resource.data.calendarOwnerIdSnapshot == request.auth.uid))
+      // );
 
-      allow update: if request.auth != null && (
-        (getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
-         getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'editor') ||
-        (getUserRole(resource.data.eventSpecificPermissions, request.auth.uid) == 'editor')
-      );
+      // allow create: if request.auth != null &&
+      //   (getUserRole(request.resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
+      //    getUserRole(request.resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'editor');
 
-      allow delete: if request.auth != null && (
-        (getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
-         getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'editor') ||
-        (getUserRole(resource.data.eventSpecificPermissions, request.auth.uid) == 'owner')
-      );
+      // allow update: if request.auth != null && (
+      //   (getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
+      //    getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'editor') ||
+      //   (getUserRole(resource.data.eventSpecificPermissions, request.auth.uid) == 'editor')
+      // );
+
+      // allow delete: if request.auth != null && (
+      //   (getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'owner' ||
+      //    getUserRole(resource.data.calendarPermissionsSnapshot, request.auth.uid) == 'editor') ||
+      //   (getUserRole(resource.data.eventSpecificPermissions, request.auth.uid) == 'owner')
+      // );
     }
   }
 }

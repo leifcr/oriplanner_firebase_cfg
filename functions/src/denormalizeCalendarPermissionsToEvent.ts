@@ -1,107 +1,134 @@
-// import * as functions from "firebase-functions/v1";
-// import {db, adminInstance} from "./adminUtil"; // Assuming you might need full adminInstance here too
+import { onDocumentCreated, onDocumentUpdated } from "firebase-functions/v2/firestore";
+import * as logger from "firebase-functions/logger";
+import { db } from "./adminUtil"; // Reuse your adminUtil for Firestore access
 
-// // Firebase Admin SDK initialization (admin.initializeApp();)
-// // is typically done once, often at the root of your index.ts if not already handled.
-// // If it's not initialized elsewhere, uncomment the line below:
-// // admin.initializeApp();
+export const denormalizeCalendarPermissionsToEventOnCreate = onDocumentCreated(
+  {
+    document: "calendars/{calendarId}/events/{eventId}",
+    // region: "europe-west1", // or your preferred region
+  },
+  async (event) => {
+    // Corrected line: event.data is the DocumentSnapshot for onDocumentCreated
+    const eventSnapshot = event.data; // event.data is the DocumentSnapshot
+    if (!eventSnapshot) {
+      logger.warn("No event snapshot data found on event creation.");
+      return;
+    }
+    const eventData = eventSnapshot.data(); // Get the actual data from the snapshot
 
-// // const db = admin.firestore();
+    const { calendarId, eventId } = event.params;
 
-// // Optional: Define interfaces for better type safety
-// interface CalendarData {
-//   uid: string; // Owner's UID
-//   permissions: { [key: string]: string }; // Permissions map
-//   // Add other calendar fields if needed for type checking
-//   [key: string]: unknown; // Allow other properties
-// }
+    logger.info(`New event created: ${eventId} in calendar: ${calendarId}. Denormalizing permissions.`);
 
-// interface EventDenormalizationUpdate {
-//   calendarOwnerIdSnapshot: string;
-//   calendarPermissionsSnapshot: { [key: string]: string };
-//   // denormalizedAt?: admin.firestore.FieldValue; // Optional timestamp
-// }
+    if (!eventData) {
+      logger.warn("No event data (from snapshot.data()) found.");
+      return;
+    }
 
-// /**
-//  * Denormalizes calendar permissions to a new event when it's created.
-//  * Copies the parent calendar's owner UID and permissions map to the event.
-//  */
-// export const denormalizeCalendarPermissionsToEvent = functions.firestore
-//   .document("/calendars/{calendarId}/events/{eventId}")
-//   .onCreate(async (snap, context) => {
-//     if (!snap) {
-//       functions.logger.error("Event snapshot is undefined. Cannot denormalize permissions.");
-//       return null;
-//     }
+    // 1. Get the parent calendar document
+    const calendarRef = db.collection("calendars").doc(calendarId);
+    let calendarDoc;
+    try {
+      calendarDoc = await calendarRef.get();
+    } catch (error) {
+      logger.error(`Error fetching calendar ${calendarId} for event ${eventId}:`, error);
+      return;
+    }
 
-//     // const eventData = snap.data(); // eventData is not directly used, snap.ref is used.
-//     const eventRef = snap.ref;
-//     const {calendarId, eventId} = context.params;
+    if (!calendarDoc.exists) {
+      logger.warn(`Calendar ${calendarId} not found for event ${eventId}. Cannot denormalize permissions.`);
+      return;
+    }
 
-//     functions.logger.log(
-//       `New event created: ${eventId} in calendar: ${calendarId}. Denormalizing permissions.`
-//     );
+    const calendarData = calendarDoc.data();
+    const calendarOwnerId = calendarData?.uid;
+    const calendarPermissions = calendarData?.permissions;
 
-//     // 1. Get the parent calendar document
-//     const calendarRef = db.collection("calendars").doc(calendarId);
-//     let calendarDoc: admin.firestore.DocumentSnapshot;
-//     try {
-//       calendarDoc = await calendarRef.get();
-//     } catch (error) {
-//       functions.logger.error(
-//         `Error fetching calendar ${calendarId} for event ${eventId}:`,
-//         error
-//       );
-//       return null; // Exit if calendar fetch fails
-//     }
+    if (!calendarOwnerId || typeof calendarPermissions !== "object") {
+      logger.error(
+        `Calendar ${calendarId} is missing 'uid' or 'permissions' map. Event: ${eventId}.`,
+        { calendarOwnerId, calendarPermissionsType: typeof calendarPermissions }
+      );
+      return;
+    }
 
-//     if (!calendarDoc.exists) {
-//       functions.logger.warn(
-//         `Calendar ${calendarId} not found for event ${eventId}. Cannot denormalize permissions.`
-//       );
-//       return null;
-//     }
+    // 2. Prepare the update for the event document
+    const updateData = {
+      calendarOwnerIdSnapshot: calendarOwnerId,
+      calendarPermissionsSnapshot: calendarPermissions,
+    };
 
-//     const calendarData = calendarDoc.data() as CalendarData | undefined; // Cast to CalendarData or undefined
+    // 3. Update the event document using the snapshot's ref
+    try {
+      // Use eventSnapshot.ref to update the document that was just created
+      await eventSnapshot.ref.update(updateData);
+      logger.info(`Successfully denormalized permissions from calendar ${calendarId} to event ${eventId}.`);
+    } catch (error) {
+      logger.error(`Error updating event ${eventId} with denormalized permissions:`, error);
+    }
+  }
+);
 
-//     if (!calendarData) {
-//       functions.logger.error(
-//         `Calendar data for ${calendarId} is undefined. Event: ${eventId}.`
-//       );
-//       return null;
-//     }
+export const denormalizeCalendarPermissionsToEventOnUpdate = onDocumentUpdated(
+  {
+    document: "calendars/{calendarId}",
+    // region: "europe-west1", // or your preferred region
+  },
+  async (event) => {
+    const beforeSnapshot = event.data?.before;
+    const afterSnapshot = event.data?.after;
 
-//     // 2. Extract necessary data from the calendar
-//     const calendarOwnerId = calendarData.uid;
-//     const calendarPermissions = calendarData.permissions;
+    if (!beforeSnapshot || !afterSnapshot) {
+      logger.warn("Missing before or after snapshot data for calendar update.");
+      return;
+    }
 
-//     if (!calendarOwnerId || typeof calendarPermissions !== "object" || calendarPermissions === null) {
-//       functions.logger.error(
-//         `Calendar ${calendarId} is missing 'uid' or 'permissions' map, or permissions is not an object. Event: ${eventId}.`,
-//         `OwnerID: ${calendarOwnerId}, Permissions type: ${typeof calendarPermissions}`
-//       );
-//       return null;
-//     }
+    const beforeData = beforeSnapshot.data();
+    const afterData = afterSnapshot.data();
+    const { calendarId } = event.params;
 
-//     // 3. Prepare the update for the event document
-//     const updateData: EventDenormalizationUpdate = {
-//       calendarOwnerIdSnapshot: calendarOwnerId,
-//       calendarPermissionsSnapshot: calendarPermissions,
-//       // denormalizedAt: admin.firestore.FieldValue.serverTimestamp(), // Optional
-//     };
+    if (!beforeData || !afterData) {
+      logger.warn("Missing before or after data from snapshots for calendar update.");
+      return;
+    }
 
-//     // 4. Update the event document
-//     try {
-//       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-//       await eventRef.update(updateData as { [key: string]: any });
-//       functions.logger.log(
-//         `Successfully denormalized permissions from calendar ${calendarId} to event ${eventId}.`
-//       );
-//     } catch (error) {
-//       functions.logger.error(
-//         `Error updating event ${eventId} with denormalized permissions:`,
-//         error
-//       );
-//     }
-//     return null; // Explicitly return null for successful completion or handled errors
-//   });
+    // Only proceed if the permissions field has changed
+    const beforePermissions = JSON.stringify(beforeData.permissions || {});
+    const afterPermissions = JSON.stringify(afterData.permissions || {});
+
+    // Also check if ownerId (uid) changed, as that should also trigger a denormalization
+    const beforeOwnerId = beforeData.uid;
+    const afterOwnerId = afterData.uid;
+
+    if (beforePermissions === afterPermissions && beforeOwnerId === afterOwnerId) {
+      logger.info(`No change in permissions or ownerId for calendar ${calendarId}, skipping event updates.`);
+      return;
+    }
+
+    logger.info(`Permissions or ownerId changed for calendar ${calendarId}, updating events...`);
+
+    // Query all events for this calendar
+    const eventsRef = db.collection("calendars").doc(calendarId).collection("events");
+    const eventsQuerySnap = await eventsRef.get();
+
+    if (eventsQuerySnap.empty) {
+      logger.info(`No events found for calendar ${calendarId} to update.`);
+      return;
+    }
+
+    const batch = db.batch();
+    eventsQuerySnap.forEach((eventDoc) => {
+      batch.update(eventDoc.ref, {
+        calendarPermissionsSnapshot: afterData.permissions, // Use permissions from afterData
+        calendarOwnerIdSnapshot: afterData.uid, // Use uid from afterData
+      });
+    });
+
+    try {
+      await batch.commit();
+      logger.info(`Updated permissions for ${eventsQuerySnap.size} events in calendar ${calendarId}.`);
+    } catch (error) {
+      logger.error(`Error committing batch updates for calendar ${calendarId}:`, error);
+    }
+  }
+);

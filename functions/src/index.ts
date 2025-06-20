@@ -7,12 +7,17 @@
 // it's good practice if other functions in the project will.
 // import "./adminUtil"; // This ensures adminUtil.ts runs and initializes admin
 
-import {onCreateUser} from "./onCreateUser";
-// import { denormalizeCalendarPermissionsToEvent } from "./denormalizeCalendarPermissionsToEvent";
+import { onCreateUser } from "./onCreateUser";
+// Only needed if we want to check permissions on the event itself
+// Since we are going to use a shared permissions model, in conjunction with the calendar,
+// this data is not needed.
+// Original idea was to denormalize calendar permissions to the event on creation and update, which has been changed.
+// import { denormalizeCalendarPermissionsToEventOnCreate, denormalizeCalendarPermissionsToEventOnUpdate } from "./denormalizeCalendarPermissionsToEvent";
 
 export {
   onCreateUser,
-  // denormalizeCalendarPermissionsToEvent,
+  // denormalizeCalendarPermissionsToEventOnCreate,
+  // denormalizeCalendarPermissionsToEventOnUpdate,
 };
 
 /**

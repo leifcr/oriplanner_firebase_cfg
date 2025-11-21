@@ -6,7 +6,7 @@ service cloud.firestore {
     // User Profiles
     match /user_profiles/{userId} {
       allow read: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && request.auth.uid == userId && 
+      allow update: if request.auth != null && request.auth.uid == userId &&
                        request.resource.data.createdAt == resource.data.createdAt &&
                        request.resource.data.uid == resource.data.uid; // Also protect uid from changes
       allow create: if false; // Creation handled by Cloud Function
@@ -19,17 +19,17 @@ service cloud.firestore {
       allow create: if true
       allow update: if true
       allow delete: if true
-      // allow read: if request.auth != null && 
-      //                (request.auth.uid == resource.data.uid || 
+      // allow read: if request.auth != null &&
+      //                (request.auth.uid == resource.data.uid ||
       //                 request.auth.uid in resource.data.permissions);
-      // allow create: if request.auth != null && 
-      //                  request.auth.uid == request.resource.data.uid && 
+      // allow create: if request.auth != null &&
+      //                  request.auth.uid == request.resource.data.uid &&
       //                  request.resource.data.permissions[request.auth.uid] == 'owner';
-      // allow update: if request.auth != null && 
-      //                  request.auth.uid == resource.data.uid && 
+      // allow update: if request.auth != null &&
+      //                  request.auth.uid == resource.data.uid &&
       //                  resource.data.permissions[request.auth.uid] == 'owner';
-      // allow delete: if request.auth != null && 
-      //                  resource.data.uid == request.auth.uid && 
+      // allow delete: if request.auth != null &&
+      //                  resource.data.uid == request.auth.uid &&
       //                  resource.data.isPersonal != true;
     }
 

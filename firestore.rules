@@ -67,5 +67,75 @@ service cloud.firestore {
       //   (getUserRole(resource.data.eventSpecificPermissions, request.auth.uid) == 'owner')
       // );
     }
+
+    // Global Event Bank Templates
+    match /global_template_bank/event_bank/released/{templateId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+
+      // allow read: if request.auth != null; // Anyone signed in can import templates.
+      // allow create, update, delete: if request.auth != null && request.auth.token.isProviderAdmin == true;
+    }
+
+    match /global_template_bank/event_bank/draft/{templateId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+
+      // allow read: if request.auth != null; // Anyone signed in can import templates.
+      // allow create, update, delete: if request.auth != null && request.auth.token.isProviderAdmin == true;
+    }
+
+    // Global Event Bank Templates
+    match /global_template_bank/day_plans/released/{dayPlanId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+
+      // allow read: if request.auth != null; // Anyone signed in can import templates.
+      // allow create, update, delete: if request.auth != null && request.auth.token.isProviderAdmin == true;
+    }
+
+    match /global_template_bank/day_plans/draft/{dayPlanId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+
+      // allow read: if request.auth != null; // Anyone signed in can import templates.
+      // allow create, update, delete: if request.auth != null && request.auth.token.isProviderAdmin == true;
+    }
+
+    // Personal Event Bank Items (scoped by owner)
+    match /template_Bank/{userId}/event_bank/{itemId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+
+      // allow read: if request.auth != null && request.auth.uid == userId;
+      // allow create: if request.auth != null && request.auth.uid == userId &&
+      //                  request.resource.data.ownerId == request.auth.uid;
+      // allow update, delete: if request.auth != null && request.auth.uid == userId &&
+      //                          resource.data.ownerId == request.auth.uid;
+    }
+
+    // Personal Day Plan bank Items (scoped by owner)
+    match /template_bank/{userId}/day_plans/{dayPlanId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+
+      // allow read: if request.auth != null && request.auth.uid == userId;
+      // allow create: if request.auth != null && request.auth.uid == userId &&
+      //                  request.resource.data.ownerId == request.auth.uid;
+      // allow update, delete: if request.auth != null && request.auth.uid == userId &&
+      //                          resource.data.ownerId == request.auth.uid;
+    }
   }
 }

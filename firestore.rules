@@ -111,7 +111,23 @@ service cloud.firestore {
     }
 
     // Personal Event Bank Items (scoped by owner)
-    match /template_Bank/{userId}/event_bank/{itemId} {
+    match /template_bank/{userId}/event_bank/{itemId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+
+      // allow read: if request.auth != null && request.auth.uid == userId;
+      // allow create: if request.auth != null && request.auth.uid == userId &&
+      //                  request.resource.data.ownerId == request.auth.uid;
+      // allow update, delete: if request.auth != null && request.auth.uid == userId &&
+      //                          resource.data.ownerId == request.auth.uid;
+    }
+    // TODO: The config should probably only be editable by the owner
+    // We might want other users/editors to edit parts of this
+    // If so we should probably move this to a collection where it's easier to share with
+    // other users and manage permissions
+    match /template_bank/{userId}/event_bank_config/{itemId} {
       allow read: if true;
       allow create: if true;
       allow update: if true;
@@ -136,6 +152,11 @@ service cloud.firestore {
       //                  request.resource.data.ownerId == request.auth.uid;
       // allow update, delete: if request.auth != null && request.auth.uid == userId &&
       //                          resource.data.ownerId == request.auth.uid;
+    }
+
+    // Media assets
+    match /media_assets/{userId}/{allPaths=**} {
+      allow read, write: if true;
     }
   }
 }

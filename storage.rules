@@ -5,8 +5,67 @@ rules_version = '2';
 //    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // DEVELOPMENT MODE: Allow all read/write access
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if true;
     }
+
+    // ---------------------------------------------------------
+    // HARDENED RULES (Commented out for future use)
+    // ---------------------------------------------------------
+
+    // STRATEGY: "Reference, Don't Copy" (Cost Optimized)
+    // 1. Users upload files to their private folder here.
+    // 2. Users get a Download URL (with token) from the client SDK.
+    // 3. Users save this URL into the shared Firestore Event document.
+    // 4. Security: If a user can read the Firestore Event, they get the URL.
+    //    These rules prevent anyone from accessing the file without that token.
+
+    // match /users/{userId}/media/{allPaths=**} {
+    //   // Only the owner can upload, delete, or read the raw file path.
+    //   // Other users access via the Download URL stored in Firestore.
+    //   allow read, write: if request.auth != null && request.auth.uid == userId;
+    // }
   }
 }
+
+
+//// These rules can be used if we want to harden Storage access even more, but requires duplication of data
+// ---------------------------------------------------------
+// HARDENED RULES (Commented out for future use)
+// ---------------------------------------------------------
+
+// 1. User Profile Media (Private to user)
+// match /users/{userId}/media/{allPaths=**} {
+//   allow read, write: if request.auth != null && request.auth.uid == userId;
+// }
+
+// 2. Calendar & Event Media (Shared based on Firestore permissions)
+// match /calendars/{calendarId}/{allPaths=**} {
+//
+//   function canReadCalendar() {
+//     let calendar = firestore.get(/databases/(default)/documents/calendars/$(calendarId));
+//     return calendar.data.uid == request.auth.uid ||
+//            calendar.data.permissions[request.auth.uid].read == true;
+//   }
+//
+//   allow read: if request.auth != null && (
+//     // 1. CHEAP CHECK: If the file metadata says this user owns it, allow immediately.
+//     // (Requires setting metadata { ownerId: '...' } on upload)
+//     request.auth.uid == resource.metadata.ownerId ||
+//
+//     // 2. EXPENSIVE CHECK: Only runs if #1 fails. Checks Firestore permissions.
+//     canReadCalendar()
+//   );
+//
+//   // For Event-specific overrides, you can nest a match block:
+//   match /events/{eventId}/{eventMedia=**} {
+//      function canReadEvent() {
+//         let event = firestore.get(/databases/(default)/documents/calendars/$(calendarId)/events/$(eventId));
+//         return event.data.permissions[request.auth.uid].read == true;
+//      }
+//      // Allow if Calendar access OR Event specific access
+//      allow read: if request.auth != null && (canReadCalendar() || canReadEvent());
+//   }
+// }
